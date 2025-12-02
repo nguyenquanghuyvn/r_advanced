@@ -1,0 +1,5 @@
+install.packages("tidyverse")
+install.packages("broom")
+install.packages("lobstr")
+install.packages("rlang")
+install.packages("vroom")
