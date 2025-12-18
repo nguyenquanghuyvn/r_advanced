@@ -50,3 +50,60 @@ expr(!!mean_rm(x) + !!mean_rm(y))
 
 x <- expr(x)
 expr(`$`(df, !!x))
+
+# Example --------------------------------------------
+var <- expr(y)
+intercept <- 10
+coefs <- c(x1 = 5, x2 = -4)
+
+coef_sym <- map(seq_along(coefs), ~ expr((!!var)[[!!.x]]))
+coef_sym
+
+linear <- function(var, val) {
+  var <- ensym(var)
+  coef_name <- map(seq_along(coefs[-1]), ~expr((!!var)[[!!.x]]))
+
+  summands <- map2(val[-1], coef_name, ~ expr((!!.x * !!.y)))
+  summands <- c(val[[1]], summands)
+  reduce(summands, ~ expr(!!.x + !!.y))
+}
+
+linear(x, c(10, -1, 2))
+
+## Slicing an array -------------------------------------------------------
+indices <- rep(list(missing_arg()), 3)
+indices
+
+expr(x[!!!indices])
+
+## Creating functions -----------------------------------------------------
+ new_function(
+  exprs(x = , y =),
+  expr({x + y})
+ )
+
+power <- function(exponent) {
+  new_function(
+      exprs(x = ),
+      expr({
+        x ^ !!exponent
+      }),
+      caller_env()
+    )
+ }
+
+power(0.5)
+t <- power(0.5)
+t(2)
+
+curve2 <- function(expr, xlim = c(0, 1), n = 100) {
+  expr <- enexpr(expr)
+  f <- new_function(exprs(x = ), expr)
+
+  x <- seq(xlim[1], xlim[2], length = n)
+  y <- f(x)
+
+  plot(x, y, type = "l", ylab = expr_text(expr))
+}
+
+curve2(sin(exp(4 * x)), n = 1000)
