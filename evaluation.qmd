@@ -1,0 +1,153 @@
+---
+title: "Evaluation"
+format: 
+    html:
+        toc: true
+        toc-depth: 2
+        toc-tilte: Contents
+        toc-location: left
+        number-sections: true
+knitr: 
+    opts_chunk:
+        comment: "#>"
+---
+
+```{r}
+#| label: set-up
+#| echo : false
+#| output: false
+
+library(rlang)
+library(purrr)
+library(rmarkdown)
+```
+
+# Introduction
+
+Quasiquotation, quosures, and data masks form **tidy evaluation**. I learned something about quasiquotation in the previous chapters. What are ***quosures*** and ***data masks***? 
+
+# Evaluation basics
+
+The author introduces the function `eval()`. It has two arguments: expressions and environment. This is the examples to use this function:
+
+```{r}
+#| label: intro-eval-example1
+#|
+
+x <- 20
+eval(expr(x))
+
+y <- 6
+eval(expr(x - y))
+```
+
+The `env()` argument tell the function where to find the binding of the variables. We continue the above the example with introducing second argument:
+
+
+```{r}
+#| label: intro-eval-example2
+
+eval(expr(x - y), env(x = 1000))
+
+```
+
+We see a different results because the function looked in an environment that `x` binds to 1000. The first argument needs to be quoted, otherwise, it may cause the confusion after running. 
+
+
+```{r}
+#| label: intro-eval-example3
+
+eval(print(x + y), env(x = 1000)) #> 26
+
+eval(expr(print(x + 1)), env(x = 0)) #> 1
+```
+
+## Application: `local()`
+
+The `local()` function removes the local variables. 
+
+
+```{r}
+#| label: local-exam1
+
+foo <- local({
+  x <- 10
+  y <- 20
+   x + y  
+})
+
+foo
+
+local2 <- function(expr) {
+    env_new <- rlang::env(caller_env())
+
+    eval(enexpr(expr), env_new)
+}
+
+local2({
+    x <- 10
+    y <- 20
+
+    x + y
+})
+```
+
+# Quosures
+
+I wonder what is the definition of expression in R. By searching in the chapter 17, I saw that an ***expression is a captured code*** and the statement that "Code is data".
+
+The `quosures` comprise from the word `quotation` and the word `closure`. This object includes both an expression and its calling environment. This feature is only in `rlang`, not in Base R. We use the functions `enquo()` and `enquos()` to capture ***user-supplied expressions***.
+
+```{r}
+#| label: quosure-exam1
+
+foo <- function(x) enquo(x)
+foo(a + b)
+```
+
+The `eval_tidy()` evaluates a single quosure.
+
+```{r}
+#| label: quosure-exam-eval-tidy
+
+a <- 1
+b <- 2
+
+eval_tidy(foo(a + b))
+
+q1 <- new_quosure(expr(x + y), env(x = 1, y = 2))
+eval_tidy(q1)
+```
+
+When the argument is dots, it is possible for each argument passed to `...` to be associated with a different environement.
+
+```{r}
+#| label: quosure-dots-different-env
+
+f <- function(...) {
+    x <- 10
+    g(..., f = x)
+}
+
+g <- function(...) {
+    enquos(...)
+}
+
+x <- 0
+
+qs <- f(global = x)
+qs
+
+map_dbl(qs, eval_tidy)
+
+q4 <- new_quosure(expr(x + y + z)) #> subclass of formulas
+class(q4)
+
+q4[[1]]
+q4[[2]]
+attr(q4, ".Environment")
+```
+
+## Nested quosures
+
+
